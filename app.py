@@ -1,4 +1,3 @@
-import json
 import os
 from functools import reduce
 
@@ -6,7 +5,7 @@ from flask import Flask
 from flask import jsonify
 from flask import request
 from flask_cors import CORS
-from flask_socketio import SocketIO, emit, send
+from flask_socketio import SocketIO, send
 from pymongo import MongoClient
 
 client = MongoClient('mongodb://heroku_56mhcgd8:m38o2mfh3boqq4l7qbil2i01pc@ds237955.mlab.com:37955/heroku_56mhcgd8')
@@ -32,8 +31,14 @@ def get_directory_structure(rootdir):
 
 
 def check_sufficient_files():
-    # current_files = os.listdir("split")
-    return True
+    index_set = set()
+    split_files = os.listdir("split")
+    for file in split_files:
+        index = file.split('_')[1].split('.')[0]
+        index_set.add(index)
+
+    return (db.count.last.find()[0].count == sorted(list(index_set))[-1]) and (
+                len(index_set) == db.count.last.find()[0].count)
 
 
 @app.route('/saveFile', methods=['POST'])
@@ -70,12 +75,16 @@ def login():
         return jsonify(response="NoUsernameOrPasswordException")
     if ('file1' not in request.files) or ('file2' not in request.files):
         return jsonify(response="FilesNotFoundException")
+    file1 = request.files.get('file1')
+    file2 = request.files.get('file2')
     if not users_collection.find_one({"username": username}):
         return jsonify(response="UserNotFoundException")
     if not users_collection.find_one({"username": username, "password": password}):
         return jsonify(response="IncorrectPasswordException")
     else:
         users_collection.update_one({"username": username, "password": password}, {"$set": {"login_status": True}})
+        file1.save(os.path.join('split', file1.filename))
+        file2.save(os.path.join('split', file2.filename))
         return jsonify(response="Logged in successfully")
 
 
@@ -86,7 +95,7 @@ def get_dir_tree():
     else:
         try:
             return_data = get_directory_structure('worktree/')
-            return json.dumps(return_data)
+            return jsonify(return_data)
         except FileNotFoundError as e:
             return jsonify(result=e)
 
@@ -105,7 +114,8 @@ def get_file_code():
 
 
 @socketio.on('logout')
-def handle_logout():
+def handle_logout(json):
+    print(json)
     if db.users.find({'logged_in': False}).length <= THRESHOLD:
         send(jsonify(result='emergency_logout'))
         return
