@@ -36,13 +36,18 @@ def get_directory_structure(rootdir):
     return directory
 
 
+@app.route('/checkSufficientFiles', methods=['GET'])
 def check_sufficient_files():
     index_set = set()
     if not os.path.exists('split'):
         os.makedirs('split')
     split_files = os.listdir("split")
+    split_files.sort()
+    print(split_files)
     for file in split_files:
-        index = file.split('_')[1].split('.')[0]
+        print(file)
+        index = file.split('_')[-1]
+
         index_set.add(index)
 
     return (COUNT == sorted(list(index_set))[-1]) and (
@@ -98,14 +103,11 @@ def login():
 
 @app.route('/getDirTree', methods=['GET'])
 def get_dir_tree():
-    if not check_sufficient_files():
-        return jsonify(response=False)
-    else:
-        try:
-            return_data = get_directory_structure('worktree/')
-            return jsonify(return_data)
-        except FileNotFoundError as e:
-            return jsonify(result=e)
+    try:
+        return_data = get_directory_structure('worktree/')
+        return jsonify(return_data)
+    except FileNotFoundError as e:
+        return jsonify(result=e)
 
 
 @app.route('/getFileCode', methods=['GET'])
@@ -119,6 +121,8 @@ def get_file_code():
             return jsonify(response=f.read())
     except FileNotFoundError as e:
         return jsonify(response=str(e))
+    except IsADirectoryError as e:
+        return jsonify(response=str(e))
 
 
 @app.route('/getSignedInUsers', methods=['GET'])
@@ -131,10 +135,12 @@ def get_signed_in_users():
 
 @socketio.on('logout')
 def handle_logout(message):
+    print(message)
+    emit('good-job', {'response': 'Hello World'})
     data = json.loads(message)
     username = data['username']
-    if db.users.find({'logged_in': False}).length <= THRESHOLD:
-        send(jsonify(result='emergency_logout'))
+    if (db.users.count_documents({'logged_in': False})) <= THRESHOLD:
+        send({'result': 'emergency_logout'})
         db.users.update_one({'username': username, 'logged_in': False}, {"$set": {'logged_in': True}})
         return
     elif len(list(logout_queue)) == db.users.count_documents({'logged_in': True}):
@@ -157,7 +163,7 @@ def handle_logout(message):
     else:
         if username not in logout_queue:
             logout_queue.add(data['username'])
-        send(jsonify(result=False))
+        send({'result': False})
 
 
 if __name__ == '__main__':
