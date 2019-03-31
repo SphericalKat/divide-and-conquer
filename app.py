@@ -159,12 +159,14 @@ def handle_logout(message):
         for i in range(1, USER_COUNT + 1):
             file1 = str(i)
             file2 = str(i + 1)
+            username = users.pop()
 
-            emit('split_files', jsonify(
-                username=users.pop(),
+            emit(username+'_split', jsonify(
+                username=username,
                 file1=file1,
                 file2=file2
             ))
+            global COUNT
             COUNT += 1
 
     else:
