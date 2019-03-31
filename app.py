@@ -96,6 +96,8 @@ def login():
         return jsonify(response="IncorrectPasswordException")
     else:
         users_collection.update_one({"username": username, "password": password}, {"$set": {"logged_in": True}})
+        if not os.path.exists('split'):
+            os.makedirs('split')
         file1.save(os.path.join('split', file1.filename))
         file2.save(os.path.join('split', file2.filename))
         return jsonify(response="Logged in successfully", username=username)
