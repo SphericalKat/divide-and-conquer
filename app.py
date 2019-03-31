@@ -133,6 +133,11 @@ def get_signed_in_users():
     return jsonify(result=users)
 
 
+@app.route('/getUserCount', methods=['GET'])
+def get_user_count():
+    return db.users.count_documents({})
+
+
 @socketio.on('logout')
 def handle_logout(message):
     print(message)
