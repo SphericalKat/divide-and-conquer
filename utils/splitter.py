@@ -1,6 +1,8 @@
+import os
+
+
 def split_file(file_name, no_of_users=1):
     file = open(file_name, 'rb')
-    extension = file_name.split(".")[1]
     data = file.read()
     file.close()
     print(len(data))
@@ -15,12 +17,13 @@ def split_file(file_name, no_of_users=1):
 
     print(chunk_size)
 
-    files = ["chunk" + str(i) + "." + extension for i in range(no_of_chunks)]
+    files = [file_name.split('.')[0] + '_' + str(i+1) for i in range(no_of_chunks)]
     for i in range(no_of_users):
-        file = open(files[i % no_of_chunks], 'wb')
+        file = open(os.path.join('split', files[i % no_of_chunks]), 'wb')
         file.write(data[:chunk_size])
         file.close()
         data = data[chunk_size:]
 
-# if __name__ == "__main__":
-#     split_file("test.jpg", 3)
+
+if __name__ == "__main__":
+    split_file("test_archive.zip", 3)

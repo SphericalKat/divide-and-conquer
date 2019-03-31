@@ -1,13 +1,18 @@
-def join_files(file_names):
-    file = open("joined_file.jpg", 'wb')
+import os
+
+
+def join_files(output_name):
+    file = open(output_name, 'wb')
+    file_names = os.listdir('split')
+    file_names.sort()
+    print(file_names)
 
     for file_name in file_names:
-        chunk = open(file_name, 'rb')
+        chunk = open(os.path.join('split', file_name), 'rb')
         file.write(chunk.read())
 
     file.close()
 
 
-# if __name__ == "__main__":
-#     l = ['chunk0.jpg', 'chunk1.jpg', 'chunk2.jpg']
-#     join_files(l)
+if __name__ == "__main__":
+    join_files('test_archive_joined.zip')

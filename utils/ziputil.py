@@ -17,4 +17,4 @@ def unzip_archive(archive_path: str, extract_path: str):
 
 if __name__ == '__main__':
     zip_files(os.path.join('..', 'worktree'), 'test_archive')
-    unzip_archive(os.path.join('test_archive.zip'), os.path.join('..', 'extract'))
+    # unzip_archive(os.path.join('test_archive.zip'), os.path.join('..', 'extract'))

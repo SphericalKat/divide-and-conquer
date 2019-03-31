@@ -1,3 +1,4 @@
+import json
 import os
 from functools import reduce
 
@@ -5,8 +6,11 @@ from flask import Flask
 from flask import jsonify
 from flask import request
 from flask_cors import CORS
-from flask_socketio import SocketIO, send
+from flask_socketio import SocketIO, send, emit
 from pymongo import MongoClient
+
+from utils.splitter import split_file
+from utils.ziputil import zip_files
 
 client = MongoClient('mongodb://heroku_56mhcgd8:m38o2mfh3boqq4l7qbil2i01pc@ds237955.mlab.com:37955/heroku_56mhcgd8')
 app = Flask(__name__)
@@ -16,6 +20,8 @@ db = client.heroku_56mhcgd8
 socketio = SocketIO(app, binary=True)
 THRESHOLD = 2
 USER_COUNT = db.users.count_documents({})
+COUNT = 0
+logout_queue = set()
 
 
 def get_directory_structure(rootdir):
@@ -37,8 +43,8 @@ def check_sufficient_files():
         index = file.split('_')[1].split('.')[0]
         index_set.add(index)
 
-    return (db.count.last.find()[0].count == sorted(list(index_set))[-1]) and (
-                len(index_set) == db.count.last.find()[0].count)
+    return (COUNT == sorted(list(index_set))[-1]) and (
+            len(index_set) == COUNT)
 
 
 @app.route('/saveFile', methods=['POST'])
@@ -85,7 +91,7 @@ def login():
         users_collection.update_one({"username": username, "password": password}, {"$set": {"login_status": True}})
         file1.save(os.path.join('split', file1.filename))
         file2.save(os.path.join('split', file2.filename))
-        return jsonify(response="Logged in successfully")
+        return jsonify(response="Logged in successfully", username=username)
 
 
 @app.route('/getDirTree', methods=['GET'])
@@ -113,16 +119,43 @@ def get_file_code():
         return jsonify(response=str(e))
 
 
+@app.route('/getSignedInUsers', methods=['GET'])
+def get_signed_in_users():
+    users = []
+    for user in db.users.find({'logged_in': True}):
+        users.append(user.username)
+    return jsonify(result=users)
+
+
 @socketio.on('logout')
-def handle_logout(json):
-    print(json)
+def handle_logout(message):
+    data = json.loads(message)
+    username = data['username']
     if db.users.find({'logged_in': False}).length <= THRESHOLD:
         send(jsonify(result='emergency_logout'))
+        db.users.update_one({'username': username, 'logged_in': False}, {"$set": {'logged_in': True}})
         return
-    elif db.users.find({'logged_in': False}).length == USER_COUNT:
-        send(jsonify(result='normal_logout'))
+    elif len(list(logout_queue)) == db.users.count_documents({'logged_in': True}):
+        emit('queue_full', broadcast=True)
+        zip_files('worktree', 'codebase')
+        split_file('codebase.zip', USER_COUNT)
+        users = get_signed_in_users()
+
+        for i in range(1, USER_COUNT + 1):
+            file1 = str(i)
+            file2 = str(i + 1)
+
+            emit('split_files', jsonify(
+                username=users.pop(),
+                file1=file1,
+                file2=file2
+            ))
+            COUNT += 1
+
     else:
-        send(jsonify(result='no_logout'))
+        if username not in logout_queue:
+            logout_queue.add(data['username'])
+        send(jsonify(result=False))
 
 
 if __name__ == '__main__':
