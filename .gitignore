@@ -108,3 +108,7 @@ venv.bak/
 # IDEA
 .idea/
 
+# Project specific
+worktree/
+split/
+
