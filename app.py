@@ -38,6 +38,8 @@ def get_directory_structure(rootdir):
 
 def check_sufficient_files():
     index_set = set()
+    if not os.path.exists('split'):
+        os.makedirs('split')
     split_files = os.listdir("split")
     for file in split_files:
         index = file.split('_')[1].split('.')[0]
@@ -88,7 +90,7 @@ def login():
     if not users_collection.find_one({"username": username, "password": password}):
         return jsonify(response="IncorrectPasswordException")
     else:
-        users_collection.update_one({"username": username, "password": password}, {"$set": {"login_status": True}})
+        users_collection.update_one({"username": username, "password": password}, {"$set": {"logged_in": True}})
         file1.save(os.path.join('split', file1.filename))
         file2.save(os.path.join('split', file2.filename))
         return jsonify(response="Logged in successfully", username=username)
@@ -123,7 +125,7 @@ def get_file_code():
 def get_signed_in_users():
     users = []
     for user in db.users.find({'logged_in': True}):
-        users.append(user.username)
+        users.append(user['username'])
     return jsonify(result=users)
 
 
