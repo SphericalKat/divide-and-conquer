@@ -1,7 +1,7 @@
 Click==7.0
 filesplit==1.0.4
 Flask==1.0.2
-Flask-Cors==3.0.7
+Flask-Cors==3.0.9
 Flask-PyMongo==2.2.0
 Flask-SocketIO==3.3.2
 itsdangerous==1.1.0
